@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Minimalis</title>
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding: 15px;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* BOX UTAMA KAPSUL HITAM */
+        .container {
+            width: 100%;
+            max-width: 410px;
+            background-color: #121212;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(255,255,255,0.05);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 20px;
+            color: #1DB954;
+        }
+        
+        /* SUSUNAN INPUT & TOMBOL SEJAJAR PROPORSIONAL */
+        .input-group {
+            display: flex;
+            width: 100%;
+            gap: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #333;
+            background-color: #1e1e1e;
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            min-width: 0;
+        }
+        .btn-add {
+            background-color: #1DB954;
+            color: white;
+            border: none;
+            padding: 0 16px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        /* LAYAR YOUTUBE UTUH NORMAL */
+        #player-container {
+            display: none; 
+            width: 100%;
+            aspect-ratio: 16/9; 
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        #player-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* BOX PLAYLIST FIXED SCROLL */
+        .playlist-box {
+            text-align: left;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .playlist-box h3 {
+            font-size: 14px;
+            color: #b3b3b3;
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+        
+        /* Mengunci tinggi daftar agar rapi saat list menumpuk banyak */
+        #playlist-ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 200px; 
+            overflow-y: auto;  
+            padding-right: 4px;
+        }
+        
+        /* Desain minimalis scrollbar */
+        #playlist-ul::-webkit-scrollbar {
+            width: 5px;
+        }
+        #playlist-ul::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+        #playlist-ul::-webkit-scrollbar-thumb:hover {
+            background: #1DB954;
+        }
+
+        .playlist-item {
+            background-color: #1e1e1e;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 5px solid #444; 
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .playlist-item:hover {
+            background-color: #252525;
+        }
+        
+        /* PENANDA GARIS HIJAU AKTIF */
+        .playlist-item.active {
+            border-left: 5px solid #1DB954 !important;
+            background-color: #1c2e22;
+        }
+        
+        .thumb-img {
+            width: 65px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+            background-color: #000;
+        }
+        .song-info {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #ff4d4d;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🎵 YouTube Streamer</h2>
+        
+        <div class="input-group">
+            <input type="text" id="youtube-url" placeholder="Tempel link video YouTube di sini...">
+            <button class="btn-add" onclick="tambahKePlaylist()">+ Tambah</button>
+        </div>
+
+        <div id="player-container">
+            <iframe id="yt-frame" allow="autoplay"></iframe>
+        </div>
+
+        <div class="playlist-box">
+            <h3>Daftar Putar Berikutnya:</h3>
+            <ul id="playlist-ul">
+                <li style='color:#666; font-size:13px; text-align:center; padding: 10px;'>Belum ada antrean lagu...</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let playlist = []; // Menyimpan objek { id: '...', judul: '...' }
+        let currentIndex = 0; 
+
+        function ekstrakIDYouTube(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        function tambahKePlaylist() {
+            const input = document.getElementById('youtube-url');
+            const videoId = ekstrakIDYouTube(input.value);
+
+            if (videoId) {
+                // Ambil judul asli video lewat server noembed secara realtime
+                fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const judulAsli = data.title || `Lagu #${playlist.length + 1}`;
+                        
+                        playlist.push({ id: videoId, judul: judulAsli }); 
+                        input.value = ""; 
+                        updateTampilanPlaylist();
+
+                        if (playlist.length === 1) {
+                            putarLaguKe(0);
+                        }
+                    })
+                    .catch(() => {
+                        // Backup jika jaringan internet/server noembed melambat
+                        playlist.push({ id: videoId, judul: `Lagu #${playlist.length + 1}` });
+                        input.value = "";
+                        updateTampilanPlaylist();
+                        if (playlist.length === 1) {
+                            putarLaguKe(0);
+                        }
+                    });
+            } else {
+                alert("Link YouTube tidak valid! Coba periksa kembali.");
+            }
+        }
+
+        function updateTampilanPlaylist() {
+            const ul = document.getElementById('playlist-ul');
+            ul.innerHTML = ""; 
+
+            if (playlist.length === 0) {
+                ul.innerHTML = "<li style='color:#666; font-size:13px; text-align:center; padding: 10px;'>Belum ada antrean lagu...</li>";
+                return;
+            }
+
+            playlist.forEach((video, index) => {
+                const li = document.createElement('li');
+                
+                if (index === currentIndex) {
+                    li.className = "playlist-item active";
+                } else {
+                    li.className = "playlist-item";
+                }
+                
+                li.onclick = (e) => {
+                    if (e.target.className !== 'btn-delete') {
+                        putarLaguKe(index);
+                    }
+                };
+                
+                const thumbnailUrl = `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`;
+                
+                li.innerHTML = `
+                    <img class="thumb-img" src="${thumbnailUrl}">
+                    <div class="song-info">${video.judul}</div>
+                    <button class="btn-delete" onclick="hapusLagu(event, ${index})">❌</button>
+                `;
+
+                ul.appendChild(li);
+            });
+        }
+
+        function putarLaguKe(index) {
+            if (playlist.length === 0) return;
+            
+            currentIndex = index;
+            const container = document.getElementById('player-container');
+            const frame = document.getElementById('yt-frame');
+
+            frame.src = `https://www.youtube.com/embed/${playlist[currentIndex].id}?autoplay=1&controls=1`;
+            container.style.display = "block"; 
+            
+            updateTampilanPlaylist(); 
+        }
+
+        function hapusLagu(event, index) {
+            event.stopPropagation(); 
+            playlist.splice(index, 1);
+            
+            if (playlist.length === 0) {
+                document.getElementById('player-container').style.display = "none";
+                document.getElementById('yt-frame').src = "";
+            } else if (index === currentIndex) {
+                putarLaguKe(0); 
+            } else if (index < currentIndex) {
+                currentIndex--;
+            }
+            
+            updateTampilanPlaylist();
+        }
+
+    </script>
+</body>
+  </html>
+  
